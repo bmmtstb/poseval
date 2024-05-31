@@ -94,40 +94,31 @@ def computeMetrics(gtFramesAll, motAll, outputDir, bSaveAll, bSaveSeq):
             for name in metricsMidNames:
                 metricsMidAll[name][0,i] += metricsMid[name]
             s = accAll[i].events['D'].sum()
-            if (np.isnan(s)):
+            if np.isnan(s):
                 s = 0
             metricsMidAll['sumD'][0,i] += s
 
-        if (bSaveSeq):
-            # compute metrics per joint per sequence
-            for i in range(nJoints):
-                metricsMid = mh.compute(accAll[i], metrics=metricsMidNames, return_dataframe=False, name='acc')
-
+            if bSaveSeq:
+                # reuse metrics per joint per sequence
                 # compute final metrics per sequence
-                if (metricsMid['num_objects'] > 0):
-                    numObj = metricsMid['num_objects']
-                else:
-                    numObj = np.nan
+                numObj = metricsMid['num_objects'] if metricsMid['num_objects'] > 0 else np.nan
                 numFP = metricsMid['num_false_positives']
-                metricsSeqAll[si]['mota'][0,i] = 100*(1. - 1.*(metricsMid['num_misses'] +
+                metricsSeqAll[si]['mota'][0,i] = 100.*(1. - 1.*((metricsMid['num_misses'] +
                                                     metricsMid['num_switches'] +
                                                     numFP) /
-                                                    numObj)
+                                                    numObj))
                 numDet = metricsMid['num_detections']
                 s = accAll[i].events['D'].sum()
                 if (numDet == 0 or np.isnan(s)):
                     metricsSeqAll[si]['motp'][0,i] = 0.0
                 else:
-                    metricsSeqAll[si]['motp'][0,i] = 100*(1. - (1.*s / numDet))
-                if (numFP+numDet > 0):
-                    totalDet = numFP+numDet
-                else:
-                    totalDet = np.nan
-                metricsSeqAll[si]['pre'][0,i]  = 100*(1.*numDet /
-                                                totalDet)
-                metricsSeqAll[si]['rec'][0,i]  = 100*(1.*numDet /
-                                        numObj)
+                    metricsSeqAll[si]['motp'][0,i] = 100.*(1. - (1.*s / numDet))
 
+                totalDet = numFP+numDet if numFP+numDet > 0 else np.nan
+                metricsSeqAll[si]['pre'][0,i]  = 100.*(1.*numDet / totalDet)
+                metricsSeqAll[si]['rec'][0,i]  = 100.*(1.*numDet / numObj)
+
+        if bSaveSeq:
             # average metrics over all joints per sequence
             idxs = np.argwhere(~np.isnan(metricsSeqAll[si]['mota'][0,:nJoints]))
             metricsSeqAll[si]['mota'][0,nJoints] = metricsSeqAll[si]['mota'][0,idxs].mean()
@@ -151,30 +142,22 @@ def computeMetrics(gtFramesAll, motAll, outputDir, bSaveAll, bSaveSeq):
 
     # compute final metrics per joint for all sequences
     for i in range(nJoints):
-        if (metricsMidAll['num_objects'][0,i] > 0):
-            numObj = metricsMidAll['num_objects'][0,i]
-        else:
-            numObj = np.nan
+        numObj = metricsMidAll['num_objects'][0,i] if metricsMidAll['num_objects'][0,i] > 0 else np.nan
         numFP = metricsMidAll['num_false_positives'][0,i]
-        metricsFinAll['mota'][0,i] = 100*(1. - (metricsMidAll['num_misses'][0,i] +
-                                                metricsMidAll['num_switches'][0,i] +
-                                                numFP) /
-                                                numObj)
+        metricsFinAll['mota'][0,i] = 100.*(1. - (
+                (
+                        metricsMidAll['num_misses'][0,i] +
+                        metricsMidAll['num_switches'][0,i] +
+                        numFP
+                ) / numObj)
+        )
         numDet = metricsMidAll['num_detections'][0,i]
-        s = metricsMidAll['sumD'][0,i]
-        if (numDet == 0 or np.isnan(s)):
-            metricsFinAll['motp'][0,i] = 0.0
-        else:
-            metricsFinAll['motp'][0,i] = 100*(1. - (s / numDet))
-        if (numFP+numDet > 0):
-            totalDet = numFP+numDet
-        else:
-            totalDet = np.nan
+        s = metricsMidAll['sumD'][0, i]
+        metricsFinAll['motp'][0, i] = 0.0 if numDet == 0 or np.isnan(s) else 100.*(1. - (s / numDet))
+        totalDet = numFP+numDet if numFP+numDet > 0 else np.nan
 
-        metricsFinAll['pre'][0,i]  = 100*(1.*numDet /
-                                       totalDet)
-        metricsFinAll['rec'][0,i]  = 100*(1.*numDet /
-                                       numObj)
+        metricsFinAll['pre'][0, i] = 100.*(1.*numDet / totalDet)
+        metricsFinAll['rec'][0, i] = 100.*(1.*numDet / numObj)
 
     # average metrics over all joints over all sequences
     idxs = np.argwhere(~np.isnan(metricsFinAll['mota'][0,:nJoints]))

@@ -22,9 +22,9 @@ def computeMetrics(scoresAll, labelsAll, nGTall):
         nGT = sum(nGTall[j, :])
         precision, recall, scoresSortedIdxs = eval_helpers.computeRPC(scores, labels, nGT)
         if (len(precision) > 0):
-            apAll[j] = eval_helpers.VOCap(recall, precision) * 100
-            preAll[j] = precision[len(precision) - 1] * 100
-            recAll[j] = recall[len(recall) - 1] * 100
+            apAll[j] = eval_helpers.VOCap(recall, precision) * 100.
+            preAll[j] = precision[len(precision) - 1] * 100.
+            recAll[j] = recall[len(recall) - 1] * 100.
     idxs = np.argwhere(~np.isnan(apAll[:nGTall.shape[0],0]))
     apAll[nGTall.shape[0]] = apAll[idxs, 0].mean()
     idxs = np.argwhere(~np.isnan(recAll[:nGTall.shape[0],0]))
