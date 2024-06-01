@@ -4,6 +4,9 @@ import sys
 import os
 import json
 import glob
+
+from tqdm import tqdm
+
 from .convert import convert_videos
 
 MIN_SCORE = -9999
@@ -458,7 +461,7 @@ def assignGTmulti(gtFrames, prFrames, distThresh):
     # container to save info for computing MOT metrics
     motAll = {}
 
-    for imgidx in range(len(gtFrames)):
+    for imgidx in tqdm(range(len(gtFrames)), desc="Assign GT img-id"):
         # distance between predicted and GT joints
         dist = np.full((len(prFrames[imgidx]["annorect"]), len(gtFrames[imgidx]["annorect"]), nJoints), np.inf)
         # score of the predicted joint
