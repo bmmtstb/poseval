@@ -34,8 +34,6 @@ def computeMetrics(gtFramesAll, motAll, outputDir, bSaveAll, bSaveSeq):
 
     # initialize final metrics
     metricsFinAll = {}
-    for name in metricsFinNames:
-        metricsFinAll[name] = np.zeros([1, nJoints+1])
 
     # create metrics
     mh = mm.metrics.create()
@@ -136,24 +134,40 @@ def computeMetrics(gtFramesAll, motAll, outputDir, bSaveAll, bSaveSeq):
             eval_helpers.writeJson(metricsSeq, filename)
 
     # compute final metrics per joint for all sequences
-    for i in range(nJoints):
-        numObj = metricsMidAll['num_objects'][0, i] if metricsMidAll['num_objects'][0, i] > 0 else np.nan
-        numFP = metricsMidAll['num_false_positives'][0, i]
-        metricsFinAll['mota'][0, i] = 100.*(1. - (
-                (
-                        metricsMidAll['num_misses'][0, i] +
-                        metricsMidAll['num_switches'][0, i] +
-                        numFP
-                ) / numObj)
-        )
-        numDet = metricsMidAll['num_detections'][0, i]
-        s = metricsMidAll['sumD'][0, i]
-        metricsFinAll['motp'][0, i] = 0.0 if numDet == 0 or np.isnan(s) else 100.*(1. - (s / numDet))
-        totalDet = numFP+numDet if numFP+numDet > 0 else np.nan
+    numFP = metricsMidAll['num_false_positives']
+    numDet = metricsMidAll['num_detections']
+    s = metricsMidAll['sumD']
 
-        metricsFinAll['pre'][0, i] = 100.*(1.*numDet / totalDet)
-        metricsFinAll['rec'][0, i] = 100.*(1.*numDet / numObj)
+    numObj = metricsMidAll['num_objects']
+    numObj[numObj <= 0] = np.nan
 
+    # total number of detections
+    totalDet = numFP + numDet
+    totalDet[totalDet <= 0] = np.nan
+
+    # MOTA
+    metricsFinAll['mota'] = 100. * (1. - (
+            (
+                    metricsMidAll['num_misses'] + metricsMidAll['num_switches'] + numFP
+            ).astype(np.float64) / numObj.astype(np.float64)))
+            # ).astype(np.float64) / totalDet.astype(np.float64)))
+
+    # MOTP
+    # use fancy np.divide, to make sure there is no division by nan or zero and set all those values to zero.
+    motp = np.zeros_like(s, dtype=np.float64)
+    np.divide(s, numDet, out=motp, where=~((numDet == 0) | np.isnan(s)))
+    metricsFinAll['motp'] = 100. * (1. - motp)
+
+    # precision and recall
+    metricsFinAll['pre'] = 100. * (numDet.astype(np.float64) / totalDet.astype(np.float64))
+    metricsFinAll['rec'] = 100. * (numDet.astype(np.float64) / numObj.astype(np.float64))
+
+
+    # add one more dimension to be able to save the mean
+    metricsFinAll['mota'] = np.pad(metricsFinAll['mota'], ((0, 0), (0, 1)), mode="constant", constant_values=0)
+    metricsFinAll['motp'] = np.pad(metricsFinAll['motp'], ((0, 0), (0, 1)), mode="constant", constant_values=0)
+    metricsFinAll['pre'] = np.pad(metricsFinAll['pre'], ((0, 0), (0, 1)), mode="constant", constant_values=0)
+    metricsFinAll['rec'] = np.pad(metricsFinAll['rec'], ((0, 0), (0, 1)), mode="constant", constant_values=0)
     # average metrics over all joints over all sequences
     idxs = np.argwhere(~np.isnan(metricsFinAll['mota'][0, :nJoints]))
     metricsFinAll['mota'][0, nJoints] = metricsFinAll['mota'][0, idxs].mean()
@@ -172,7 +186,7 @@ def computeMetrics(gtFramesAll, motAll, outputDir, bSaveAll, bSaveSeq):
         metricsFin['rec'] = metricsFin['rec'].flatten().tolist()
         metricsFin['names'] = names
 
-        filename = outputDir + '/total_MOT_metrics.json'
+        filename = os.path.join(outputDir, './total_MOT_metrics.json')
         print('saving results to', filename)
         eval_helpers.writeJson(metricsFin, filename)
 
